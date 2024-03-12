@@ -1,0 +1,81 @@
+import { useSyncExternalStore } from 'react'
+import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
+
+const createEmitter = () => {
+    const subscriptions = new Map()
+    return {
+        emit: (v) => subscriptions.forEach((fn) => fn(v)),
+        subscribe: (fn) => {
+            const key = Symbol()
+            subscriptions.set(key, fn)
+            return () => subscriptions.delete(key)
+        }
+    }
+}
+
+export const createStore = (initialize) => {
+    // 1. create an emitter
+    const emitter = createEmitter()
+
+    // 2. create store
+    let store = null
+    const get = () => store
+    const set = (op) => {
+        store = op(store)
+        // notify all subscribers when store updates
+        emitter.emit(store)
+    }
+
+    // 3. initialize store
+    store = initialize(set, get)
+
+    const useStore = (selector) => {
+        if (selector) {
+            return useSyncExternalStoreWithSelector(
+                emitter.subscribe,
+                get,
+                get,
+                selector
+            )
+        }
+        return useSyncExternalStore(emitter.subscribe, get)
+    }
+
+    return useStore
+}
+
+export const useStore = createStore((set) => ({
+    meta: {},
+    cart: {
+        item_name: 'T-Shirt',
+        price: 59,
+        currency_code: 'USD',
+        quantity: 2,
+        tax: 12,
+        shipping: 10
+    },
+    sdk: {
+        clientId: 'AbZtjYpuBgn7oZFlkmvs6t4uGxIpfpCpG8PVUNJlZ2bFuUx-Nc4Kgj-UkYaujZbojuXGZcMyHQh3nDwT', 
+        merchantId: 'A2AL8PEZEQKX8',
+        buyerCountry: 'US',
+        components: "buttons,applepay,googlepay,payment-fields,marks,funding-eligibility"
+    },
+    buttons: {
+        selectedFundingSource: ''
+    },
+    init: (key, value) => set(store => ({
+        ...store,
+        [key]: {
+            ...store[key],
+            ...value
+        }
+    })),
+    set: (key, name, value) =>
+        set((prev) => ({
+            ...prev,
+            [key]: {
+                ...prev[key],
+                [name]: value
+            }
+        }))
+}))

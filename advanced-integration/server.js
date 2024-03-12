@@ -6,6 +6,7 @@ const { PORT = 8888 } = process.env;
 const app = express();
 app.set("view engine", "ejs");
 app.use(express.static("public"));
+app.use(express.static("dist"));
 
 // render checkout page with client id & unique client token
 app.get("/", async (req, res) => {
