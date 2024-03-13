@@ -5,7 +5,7 @@ import {
     usePayPalScriptReducer,
 } from "@paypal/react-paypal-js";
 import { setupApplepay } from "./applepay";
-import { onGooglePayLoaded } from "./googlepay";
+import { GooglePayButtonContainer, onGooglePayLoaded } from "./googlepay";
 import { useStore } from "./store";
 const fundingSources = [
     "paypal",
@@ -59,20 +59,38 @@ function FundingList() {
             </ul>
         )
     }
+    // eslint-disable-next-line no-undef
+    const showApplePay = window?.ApplePaySession && ApplePaySession?.supportsVersion(4) && ApplePaySession?.canMakePayments()
     return (
         <ul className="list-group list-group-flush">
             {fundingSources.filter((fundingSource) => fundingSource === 'googlepay' || paypal?.isFundingEligible(fundingSource)).map(fundingSource => {
                 const button = paypal.Buttons({
                     fundingSource: fundingSource,
                 });
+                if (fundingSource === 'applepay' && !showApplePay) return null;
                 return (
-                    <li key={fundingSource} className="list-group-item d-flex align-items-center">
-                        <input className="form-check-input me-1" type="radio" name="fundingsource" checked={fundingSource === selectedFundingSource} value={fundingSource} id={fundingSource} onChange={() => set('buttons', 'selectedFundingSource', fundingSource)} />
-                        <label className="form-check-label" htmlFor={fundingSource}>{button.isEligible() ? (
-                            <PayPalMarks fundingSource={fundingSource} />
-                        ) : (
-                            fundingSource == 'googlepay' ? 'Google Pay' : 'Apple Pay'
-                        )}</label>
+                    <li key={fundingSource} className="list-group-item">
+                        <p className="form-check">
+                            <input className="form-check-input me-1" type="radio" name="fundingsource" checked={fundingSource === selectedFundingSource} value={fundingSource} id={fundingSource} onChange={() => set('buttons', 'selectedFundingSource', fundingSource)} />
+                            <label className="form-check-label" htmlFor={fundingSource}>{button.isEligible() ? (
+                                <PayPalMarks fundingSource={fundingSource} />
+                            ) : (
+                                fundingSource == 'googlepay' ? 'Google Pay' : 'Apple Pay'
+                            )}</label>
+                        </p>
+                        {selectedFundingSource === fundingSource && selectedFundingSource === 'applepay' &&
+                            <div id="applepay-container"></div>}
+                        {/*selectedFundingSource === 'googlepay' && <div id="googlepay-container"></div>*/}
+                        {selectedFundingSource === fundingSource && !['', 'applepay', 'googlepay'].includes(selectedFundingSource) &&
+                        <div className="paypal-container">
+                            <PayPalButtons
+                                fundingSource={selectedFundingSource}
+                                forceReRender={[selectedFundingSource]}
+                            />
+                            </div>
+                        }
+                        {selectedFundingSource === fundingSource &&
+                            <GooglePayButtonContainer />}
                     </li>
                 )
             })}
@@ -83,6 +101,7 @@ function FundingList() {
 
 export function PaymentMethods() {
     const [{ isResolved }] = usePayPalScriptReducer();
+    //const cart = useStore(store => store.cart);
     const selectedFundingSource = useStore(store => store.buttons.selectedFundingSource);
 
     useEffect(() => {
@@ -91,9 +110,31 @@ export function PaymentMethods() {
             setupApplepay().catch(console.error);
         }
         // eslint-disable-next-line no-undef
+        /*
         if (isResolved && selectedFundingSource === 'googlepay' && window?.google && window?.paypal?.Googlepay) {
-            onGooglePayLoaded().catch(console.log);
-        }
+            onGooglePayLoaded({
+                displayItems: [{
+                  label: "Subtotal",
+                  type: "SUBTOTAL",
+                  price: (cart.price * cart.quantity).toFixed(2).toString(),
+                },
+                {
+                  label: "Tax",
+                  type: "TAX",
+                  price: (cart.tax).toFixed(2).toString(),
+                },
+                {
+                    label: "Shipping",
+                    type: "LINE_ITEM",
+                    price: (cart.shipping).toFixed(2).toString(),
+                  }
+                ],
+                currencyCode: cart.currency_code,
+                totalPriceStatus: "FINAL",
+                totalPrice: ((cart.price * cart.quantity) + cart.shipping + cart.tax).toFixed(2).toString(),
+                totalPriceLabel: "Total"
+              }).catch(console.log);
+        }*/
     }, [isResolved, selectedFundingSource])
     return (
         <div className=" bg-white p-5 flex flex-column" style={{ minHeight: "100%" }}>
@@ -101,15 +142,7 @@ export function PaymentMethods() {
 
             <FundingList />
 
-            {selectedFundingSource === 'applepay' &&
-                <div id="applepay-container"></div>}
-            {selectedFundingSource === 'googlepay' && <div id="googlepay-container"></div>}
-            {!['', 'applepay', 'googlepay'].includes(selectedFundingSource) &&
-                <PayPalButtons
-                    fundingSource={selectedFundingSource}
-                    forceReRender={[selectedFundingSource]}
-                />
-            }
+
         </div>
     )
 }

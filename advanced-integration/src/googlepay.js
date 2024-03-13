@@ -1,4 +1,6 @@
-
+import React, { useEffect, useState } from 'react';
+import GooglePayButton from '@google-pay/button-react';
+import { useStore } from './store';
 /* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 
@@ -31,7 +33,7 @@ async function getGooglePayConfig() {
  * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#PaymentDataRequest|PaymentDataRequest}
  * @returns {object} PaymentDataRequest fields
  */
-async function getGooglePaymentDataRequest() {
+async function getGooglePaymentDataRequest(payload) {
   const { allowedPaymentMethods, merchantInfo, apiVersion, apiVersionMinor, countryCode } = await getGooglePayConfig();
   const baseRequest = {
     apiVersion,
@@ -40,7 +42,10 @@ async function getGooglePaymentDataRequest() {
   const paymentDataRequest = Object.assign({}, baseRequest);
 
   paymentDataRequest.allowedPaymentMethods = allowedPaymentMethods;
-  paymentDataRequest.transactionInfo = getGoogleTransactionInfo(countryCode);
+  paymentDataRequest.transactionInfo = {
+    ...payload,
+    countryCode: countryCode,
+  }; //getGoogleTransactionInfo(countryCode);
   paymentDataRequest.merchantInfo = merchantInfo;
 
   paymentDataRequest.callbackIntents = ["PAYMENT_AUTHORIZATION"];
@@ -89,21 +94,19 @@ function getGooglePaymentsClient() {
 }
 
 
-
-
 /**
  * Initialize Google PaymentsClient after Google-hosted JavaScript has loaded
  *
  * Display a Google Pay payment button after confirmation of the viewer's
  * ability to pay.
  */
-export async function onGooglePayLoaded() {
+export async function onGooglePayLoaded(payload) {
   const paymentsClient = getGooglePaymentsClient();
   const { allowedPaymentMethods, apiVersion, apiVersionMinor } = await getGooglePayConfig();
   paymentsClient.isReadyToPay({ allowedPaymentMethods, apiVersion, apiVersionMinor })
     .then(function (response) {
       if (response.result) {
-        addGooglePayButton();
+        addGooglePayButton(payload);
       }
     })
     .catch(function (err) {
@@ -118,11 +121,11 @@ export async function onGooglePayLoaded() {
  * @see {@link https://developers.google.com/pay/api/web/reference/request-objects#ButtonOptions|Button options}
  * @see {@link https://developers.google.com/pay/api/web/guides/brand-guidelines|Google Pay brand guidelines}
  */
-function addGooglePayButton() {
+function addGooglePayButton(payload) {
   const paymentsClient = getGooglePaymentsClient();
   const button =
     paymentsClient.createButton({
-      onClick: onGooglePaymentButtonClicked
+      onClick: onGooglePaymentButtonClicked(payload)
     });
   document.getElementById('googlepay-container').appendChild(button);
 }
@@ -158,8 +161,8 @@ function getGoogleTransactionInfo(countryCode) {
 /**
  * Show Google Pay payment sheet when Google Pay payment button is clicked
  */
-async function onGooglePaymentButtonClicked() {
-  const paymentDataRequest = await getGooglePaymentDataRequest();
+async function onGooglePaymentButtonClicked(payload) {
+  const paymentDataRequest = await getGooglePaymentDataRequest(payload);
   const paymentsClient = getGooglePaymentsClient();
   paymentsClient.loadPaymentData(paymentDataRequest);
 }
@@ -250,4 +253,59 @@ async function processPayment(paymentData) {
       }
     }
   }
+}
+
+export function GooglePayButtonContainer() {
+  const selectedFundingSource = useStore(store => store.buttons.selectedFundingSource);
+  const cart = useStore(store => store.cart);
+  const [paymentRequest, setPaymentRequest] = useState();
+
+
+  useEffect(() => {
+    if (selectedFundingSource === 'googlepay') {
+      getGooglePaymentDataRequest({
+        displayItems: [
+          {
+            label: `${cart.item_name} x ${cart.quantity}`,
+            price: (cart.price * cart.quantity).toFixed(2).toString(),
+            type: 'LINE_ITEM',
+
+          },
+          {
+            label: "Subtotal",
+            type: "SUBTOTAL",
+            price: (cart.price * cart.quantity).toFixed(2).toString(),
+          },
+          {
+            label: "Tax",
+            type: "TAX",
+            price: (cart.tax).toFixed(2).toString(),
+          },
+          {
+            label: "Shipping",
+            type: "LINE_ITEM",
+            price: (cart.shipping).toFixed(2).toString(),
+          }
+        ],
+        currencyCode: cart.currency_code,
+        totalPriceStatus: "FINAL",
+        totalPrice: ((cart.price * cart.quantity) + cart.shipping + cart.tax).toFixed(2).toString(),
+        totalPriceLabel: "Total"
+      }).then(setPaymentRequest).catch(console.log);
+    }
+  }, [selectedFundingSource]);
+
+  function handleLoadPaymentData(paymentData) {
+    console.log('Payment data', paymentData);
+  }
+
+
+  if (selectedFundingSource !== 'googlepay' || !paymentRequest) return null
+  return (
+    <div id="googlepay-container">
+      <GooglePayButton environment="TEST" buttonType='plain' onPaymentAuthorized={onPaymentAuthorized} paymentRequest={paymentRequest} onLoadPaymentData={handleLoadPaymentData}
+        onError={error => console.error(error)} />
+    </div>
+  )
+
 }
