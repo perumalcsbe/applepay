@@ -50,7 +50,7 @@ export const useStore = createStore((set) => ({
         id: 'NB5QRK3FJ4ANE',
         item_name: 'T-Shirt',
         price: 20,
-        currency_code: 'USD',
+        currency_code: 'EUR',
         quantity: 2,
         tax: 12,
         tax_rate: 9,
@@ -59,7 +59,7 @@ export const useStore = createStore((set) => ({
     sdk: {
         clientId: 'AbZtjYpuBgn7oZFlkmvs6t4uGxIpfpCpG8PVUNJlZ2bFuUx-Nc4Kgj-UkYaujZbojuXGZcMyHQh3nDwT', 
         merchantId: 'A2AL8PEZEQKX8',
-        buyerCountry: 'US',
+        buyerCountry: 'DE',
         components: "buttons,applepay,googlepay,payment-fields,marks,funding-eligibility",
         enableFunding: "venmo"
     },

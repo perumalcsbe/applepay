@@ -7,6 +7,7 @@ import {
 import { ApplePayButtonContainer, setupApplepay } from "./applepay";
 import { GooglePayButtonContainer } from "./googlepay";
 import { useStore } from "./store";
+import PayPalMarkContainer from "./apm";
 const fundingSources = [
     "paypal",
     "venmo",
@@ -81,6 +82,8 @@ function FundingList() {
                         {/*selectedFundingSource === fundingSource && selectedFundingSource === 'applepay' &&
                             <div id="applepay-container"></div>*/}
                         {/*selectedFundingSource === 'googlepay' && <div id="googlepay-container"></div>*/}
+                        {selectedFundingSource === fundingSource && ['ideal', 'sofort', 'p24', 'giropay', 'mybank', 'multibanco', 'eps', 'blik', 'bancontact'].includes(selectedFundingSource) &&
+                            <PayPalMarkContainer />}
                         {selectedFundingSource === fundingSource && !['', 'applepay', 'googlepay'].includes(selectedFundingSource) &&
                             <div className="paypal-container">
                                 <PayPalButtons
@@ -94,6 +97,7 @@ function FundingList() {
 
                         {selectedFundingSource === fundingSource &&
                             <ApplePayButtonContainer />}
+
                     </li>
                 )
             })}
