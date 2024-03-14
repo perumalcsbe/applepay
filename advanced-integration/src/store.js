@@ -47,18 +47,21 @@ export const createStore = (initialize) => {
 export const useStore = createStore((set) => ({
     meta: {},
     cart: {
+        id: 'NB5QRK3FJ4ANE',
         item_name: 'T-Shirt',
-        price: 59,
+        price: 20,
         currency_code: 'USD',
         quantity: 2,
         tax: 12,
+        tax_rate: 9,
         shipping: 10
     },
     sdk: {
         clientId: 'AbZtjYpuBgn7oZFlkmvs6t4uGxIpfpCpG8PVUNJlZ2bFuUx-Nc4Kgj-UkYaujZbojuXGZcMyHQh3nDwT', 
         merchantId: 'A2AL8PEZEQKX8',
         buyerCountry: 'US',
-        components: "buttons,applepay,googlepay,payment-fields,marks,funding-eligibility"
+        components: "buttons,applepay,googlepay,payment-fields,marks,funding-eligibility",
+        enableFunding: "venmo"
     },
     buttons: {
         selectedFundingSource: ''

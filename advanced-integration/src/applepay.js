@@ -1,3 +1,6 @@
+import React from "react";
+import { useStore } from "./store";
+
 export async function setupApplepay() {
     const applepay = paypal.Applepay();
     const {
@@ -107,4 +110,115 @@ export async function setupApplepay() {
 
         session.begin();
     }
+}
+
+export function ApplePayButtonContainer() {
+    const selectedFundingSource = useStore(store => store.buttons.selectedFundingSource);
+    const cart = useStore(store => store.cart);
+
+    async function onClick() {
+        const applepay = paypal.Applepay();
+        const {
+            countryCode,
+            currencyCode,
+            merchantCapabilities,
+            supportedNetworks,
+        } = await applepay.config();
+        console.log({ merchantCapabilities, currencyCode, supportedNetworks })
+
+        const paymentRequest = {
+            countryCode,
+            currencyCode: cart.currency_code,
+            merchantCapabilities,
+            supportedNetworks,
+            requiredBillingContactFields: [
+                "name",
+                "phone",
+                "email",
+                "postalAddress",
+            ],
+            requiredShippingContactFields: [
+            ],
+            total: {
+                label: "Demo (Card is not charged)",
+                amount: ((cart.price * cart.quantity) + cart.shipping + cart.tax).toFixed(2).toString(),
+                type: "final",
+            },
+        };
+
+        // eslint-disable-next-line no-undef
+        let session = new ApplePaySession(4, paymentRequest);
+
+        session.onvalidatemerchant = (event) => {
+            applepay
+                .validateMerchant({
+                    validationUrl: event.validationURL,
+                })
+                .then((payload) => {
+                    session.completeMerchantValidation(payload.merchantSession);
+                })
+                .catch((err) => {
+                    console.error(err);
+                    session.abort();
+                });
+        };
+
+        session.onpaymentmethodselected = () => {
+            session.completePaymentMethodSelection({
+                newTotal: paymentRequest.total,
+            });
+        };
+
+        session.onpaymentauthorized = async (event) => {
+            try {
+                /* Create Order on the Server Side */
+                const orderResponse = await fetch(`/api/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                if (!orderResponse.ok) {
+                    throw new Error("error creating order")
+                }
+
+                const { id } = await orderResponse.json()
+                console.log({ id })
+                /**
+                 * Confirm Payment 
+                 */
+                await applepay.confirmOrder({ orderId: id, token: event.payment.token, billingContact: event.payment.billingContact, shippingContact: event.payment.shippingContact });
+
+                /*
+                * Capture order (must currently be made on server)
+                */
+                await fetch(`/api/orders/${id}/capture`, {
+                    method: 'POST',
+                });
+
+                session.completePayment({
+                    status: window.ApplePaySession.STATUS_SUCCESS,
+                });
+            } catch (err) {
+                console.error(err);
+                session.completePayment({
+                    status: window.ApplePaySession.STATUS_FAILURE,
+                });
+            }
+        };
+
+        session.oncancel = () => {
+            console.log("Apple Pay Cancelled !!")
+        }
+
+        session.begin();
+    }
+
+    if (selectedFundingSource !== 'applepay') return null
+    return (
+        <div id="applepay-container">
+            <apple-pay-button id="btn-appl" buttonstyle="black" type="buy" locale="en" onClick={onClick} />
+        </div>
+    )
+
 }

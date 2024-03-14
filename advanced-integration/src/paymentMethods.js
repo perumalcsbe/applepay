@@ -4,8 +4,8 @@ import {
     PayPalMarks,
     usePayPalScriptReducer,
 } from "@paypal/react-paypal-js";
-import { setupApplepay } from "./applepay";
-import { GooglePayButtonContainer, onGooglePayLoaded } from "./googlepay";
+import { ApplePayButtonContainer, setupApplepay } from "./applepay";
+import { GooglePayButtonContainer } from "./googlepay";
 import { useStore } from "./store";
 const fundingSources = [
     "paypal",
@@ -78,19 +78,22 @@ function FundingList() {
                                 fundingSource == 'googlepay' ? 'Google Pay' : 'Apple Pay'
                             )}</label>
                         </p>
-                        {selectedFundingSource === fundingSource && selectedFundingSource === 'applepay' &&
-                            <div id="applepay-container"></div>}
+                        {/*selectedFundingSource === fundingSource && selectedFundingSource === 'applepay' &&
+                            <div id="applepay-container"></div>*/}
                         {/*selectedFundingSource === 'googlepay' && <div id="googlepay-container"></div>*/}
                         {selectedFundingSource === fundingSource && !['', 'applepay', 'googlepay'].includes(selectedFundingSource) &&
-                        <div className="paypal-container">
-                            <PayPalButtons
-                                fundingSource={selectedFundingSource}
-                                forceReRender={[selectedFundingSource]}
-                            />
+                            <div className="paypal-container">
+                                <PayPalButtons
+                                    fundingSource={selectedFundingSource}
+                                    forceReRender={[selectedFundingSource]}
+                                />
                             </div>
                         }
                         {selectedFundingSource === fundingSource &&
                             <GooglePayButtonContainer />}
+
+                        {selectedFundingSource === fundingSource &&
+                            <ApplePayButtonContainer />}
                     </li>
                 )
             })}
