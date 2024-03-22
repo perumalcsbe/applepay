@@ -37,7 +37,9 @@ async function getGooglePaymentDataRequest(payload) {
   const { allowedPaymentMethods, merchantInfo, apiVersion, apiVersionMinor, countryCode } = await getGooglePayConfig();
   const baseRequest = {
     apiVersion,
-    apiVersionMinor
+    apiVersionMinor,
+    emailRequired: true,
+    shippingAddressRequired: true
   }
   const paymentDataRequest = Object.assign({}, baseRequest);
 
@@ -178,14 +180,18 @@ async function processPaymentNcps(paymentData) {
   const modal = document.getElementById("resultModal");
   resultElement.innerHTML = ""
   try {
-    const { access_token } = await fetch(`https://api-m.sandbox.paypal.com/v1/oauth2/token`, {
+    const { access_token } = await fetch(`https://api.te-ncps-reg.qa.paypal.com/v1/oauth2/token`, {
       method: "post",
       body: "grant_type=client_credentials",
       headers: {
-        Authorization: `Basic QWJadGpZcHVCZ243b1pGbGttdnM2dDR1R3hJcGZwQ3BHOFBWVU5KbFoyYkZ1VXgtTmM0S2dqLVVrWWF1alpib2p1WEdaY015SFFoM25Ed1Q=`,
+        // Authorization: `Basic QWJadGpZcHVCZ243b1pGbGttdnM2dDR1R3hJcGZwQ3BHOFBWVU5KbFoyYkZ1VXgtTmM0S2dqLVVrWWF1alpib2p1WEdaY015SFFoM25Ed1Q=`,
+
+        Authorization: 'Basic Ql9BaUMwRmVVOHYtNVBlRVE3cFFBVEpTdkc0cHBLcGU4UFgtLVptYm44VVpVQnBTdUh2VXB1MTFzOWZvNTFVRTVDN2V3S2c1S3hqWmpTamt1UQ=='
       },
     }).then((res) => res.json());
-    const { context_id } = await fetch(`https://api-m.sandbox.paypal.com/v1/checkout/links/NB5QRK3FJ4ANE/create-context`, {
+    //WS5XPBM5KBDVU
+    //const { context_id } = await fetch(`https://api-m.sandbox.paypal.com/v1/checkout/links/NB5QRK3FJ4ANE/create-context`, {
+    const { context_id } = await fetch(`https://api.te-ncps-reg.qa.paypal.com/v1/checkout/links/WS5XPBM5KBDVU/create-context`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -197,7 +203,7 @@ async function processPaymentNcps(paymentData) {
       }),
     }).then((res) => res.json());
 
-    console.log(" ===== Order Created ===== ", context_id); 
+    console.log(" ===== Order Created ===== ", context_id);
     /** Approve Payment */
 
     const { status } = await paypal.Googlepay().confirmOrder({
@@ -268,87 +274,7 @@ async function processPaymentNcps(paymentData) {
   }
 }
 
-async function processPayment(paymentData) {
-  const resultElement = document.getElementById("result");
-  const modal = document.getElementById("resultModal");
-  resultElement.innerHTML = ""
-  try {
-    const { id } = await fetch(`/api/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }).then((res) => res.json());
 
-    console.log(" ===== Order Created ===== ");
-    /** Approve Payment */
-
-    const { status } = await paypal.Googlepay().confirmOrder({
-      orderId: id,
-      paymentMethodData: paymentData.paymentMethodData
-    });
-
-    if (status === 'PAYER_ACTION_REQUIRED') {
-      console.log(" ===== Confirm Payment Completed Payer Action Required ===== ")
-      paypal.Googlepay().initiatePayerAction({ orderId: id }).then(async () => {
-
-        /**
-         *  GET Order 
-         */
-        const orderResponse = await fetch(`/api/orders/${id}`, {
-          method: "GET"
-        }).then(res => res.json())
-
-        console.log(" ===== 3DS Contingency Result Fetched ===== ");
-        console.log(orderResponse?.payment_source?.google_pay?.card?.authentication_result)
-        /*
-         * CAPTURE THE ORDER
-         */
-        console.log(" ===== Payer Action Completed ===== ")
-
-        modal.style.display = "block";
-        resultElement.classList.add("spinner");
-        const captureResponse = await fetch(`/api/orders/${id}/capture`, {
-          method: "POST"
-        }).then(res => res.json())
-
-        console.log(" ===== Order Capture Completed ===== ")
-        resultElement.classList.remove("spinner");
-        resultElement.innerHTML = prettyPrintJson.toHtml(captureResponse, {
-          indent: 2
-        });
-
-
-      })
-    } else {
-      /*
-       * CAPTURE THE ORDER
-       */
-
-      const response = await fetch(`/api/orders/${id}/capture`, {
-        method: "POST"
-      }).then(res => res.json())
-
-      console.log(" ===== Order Capture Completed ===== ")
-      modal.style.display = "block";
-      resultElement.innerHTML = prettyPrintJson.toHtml(response, {
-        indent: 2
-      });
-
-    }
-
-    return { transactionState: 'SUCCESS' }
-
-
-  } catch (err) {
-    return {
-      transactionState: 'ERROR',
-      error: {
-        message: err.message
-      }
-    }
-  }
-}
 
 export function GooglePayButtonContainer() {
   const selectedFundingSource = useStore(store => store.buttons.selectedFundingSource);
@@ -387,12 +313,114 @@ export function GooglePayButtonContainer() {
         ],
         currencyCode: cart.currency_code,
         totalPriceStatus: "FINAL",
-        totalPrice: ((cart.price * cart.quantity) + cart.shipping + cart.tax).toFixed(2).toString(),
+        totalPrice: ((cart.price * cart.quantity) + cart.shipping + tax).toFixed(2).toString(),
         totalPriceLabel: "Total"
       }).then(setPaymentRequest).catch(console.log);
     }
   }, [selectedFundingSource]);
 
+  async function processPayment(paymentData) {
+    const resultElement = document.getElementById("result");
+    const modal = document.getElementById("resultModal");
+    resultElement.innerHTML = ""
+    try {
+      const { id } = await fetch(`/api/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(cart)
+      }).then((res) => res.json());
+
+      console.log(" ===== Order Created ===== ");
+      /** Approve Payment */
+      console.log(paymentData);
+      const { status } = await paypal.Googlepay().confirmOrder({
+        orderId: id,
+        paymentMethodData: paymentData.paymentMethodData,
+        email: paymentData.email,
+        shippingAddress: paymentData.shippingAddress
+      });
+
+      if (status === 'PAYER_ACTION_REQUIRED') {
+        console.log(" ===== Confirm Payment Completed Payer Action Required ===== ")
+        paypal.Googlepay().initiatePayerAction({ orderId: id }).then(async () => {
+
+          /**
+           *  GET Order 
+           */
+          const orderResponse = await fetch(`/api/orders/${id}`, {
+            method: "GET"
+          }).then(res => res.json())
+
+          console.log(" ===== 3DS Contingency Result Fetched ===== ");
+          console.log(orderResponse?.payment_source?.google_pay?.card?.authentication_result)
+          /*
+           * CAPTURE THE ORDER
+           */
+          console.log(" ===== Payer Action Completed ===== ")
+
+          modal.style.display = "block";
+          resultElement.classList.add("spinner");
+          const captureResponse = await fetch(`/api/orders/${id}/capture`, {
+            method: "POST"
+          }).then(res => res.json())
+
+          console.log(" ===== Order Capture Completed ===== ")
+          resultElement.classList.remove("spinner");
+          resultElement.innerHTML = prettyPrintJson.toHtml(captureResponse, {
+            indent: 2
+          });
+
+        })
+      } else {
+        /*
+         * CAPTURE THE ORDER
+         */
+
+        const response = await fetch(`/api/orders/${id}/capture`, {
+          method: "POST"
+        }).then(res => res.json())
+
+        console.log(" ===== Order Capture Completed ===== ")
+        modal.style.display = "block";
+        resultElement.innerHTML = prettyPrintJson.toHtml(response, {
+          indent: 2
+        });
+
+        /**
+                  *  GET Order 
+                  */
+        const getOrderResponse = await fetch(`/api/orders/${id}`, {
+          method: "POST"
+        }).then(res => res.json())
+        console.log(" ==== Get Order Response ==== ", getOrderResponse)
+
+      }
+
+      return { transactionState: 'SUCCESS' }
+
+
+    } catch (err) {
+      return {
+        transactionState: 'ERROR',
+        error: {
+          message: err.message
+        }
+      }
+    }
+  }
+  function onPaymentAuthorized(paymentData) {
+    return new Promise(function (resolve, reject) {
+      processPayment(paymentData)
+        .then(function () {
+          resolve({ transactionState: 'SUCCESS' });
+        })
+        .catch(function () {
+          resolve({ transactionState: 'ERROR' });
+        });
+    });
+  }
   function handleLoadPaymentData(paymentData) {
     console.log('Payment data', paymentData);
   }

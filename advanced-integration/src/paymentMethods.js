@@ -4,10 +4,11 @@ import {
     PayPalMarks,
     usePayPalScriptReducer,
 } from "@paypal/react-paypal-js";
-import { ApplePayButtonContainer, setupApplepay } from "./applepay";
+import { ApplePayButtonContainer } from "./applepay";
 import { GooglePayButtonContainer } from "./googlepay";
 import { useStore } from "./store";
 import PayPalMarkContainer from "./apm";
+import { processPayment } from "./processPayment";
 const fundingSources = [
     "paypal",
     "venmo",
@@ -41,6 +42,7 @@ const fundingSources = [
 function FundingList() {
     const [{ isPending }] = usePayPalScriptReducer();
     const set = useStore(store => store.set);
+    const cart = useStore(store => store.cart);
     const selectedFundingSource = useStore(store => store.buttons.selectedFundingSource);
     if (isPending) {
         return (
@@ -62,6 +64,8 @@ function FundingList() {
     }
     // eslint-disable-next-line no-undef
     const showApplePay = window?.ApplePaySession && ApplePaySession?.supportsVersion(4) && ApplePaySession?.canMakePayments()
+    const {createOrder, captureOrder} = processPayment(cart)
+
     return (
         <ul className="list-group list-group-flush">
             {fundingSources.filter((fundingSource) => fundingSource === 'googlepay' || paypal?.isFundingEligible(fundingSource)).map(fundingSource => {
@@ -89,6 +93,8 @@ function FundingList() {
                                 <PayPalButtons
                                     fundingSource={selectedFundingSource}
                                     forceReRender={[selectedFundingSource]}
+                                    createOrder={createOrder}
+                                    onApprove={captureOrder}
                                 />
                             </div>
                         }
@@ -113,9 +119,9 @@ export function PaymentMethods() {
 
     useEffect(() => {
         // eslint-disable-next-line no-undef
-        if (isResolved && selectedFundingSource === 'applepay' && window?.ApplePaySession && ApplePaySession?.supportsVersion(4) && ApplePaySession?.canMakePayments()) {
-            setupApplepay().catch(console.error);
-        }
+       // if (isResolved && selectedFundingSource === 'applepay' && window?.ApplePaySession && ApplePaySession?.supportsVersion(4) && ApplePaySession?.canMakePayments()) {
+         //   setupApplepay().catch(console.error);
+        //}
         // eslint-disable-next-line no-undef
         /*
         if (isResolved && selectedFundingSource === 'googlepay' && window?.google && window?.paypal?.Googlepay) {

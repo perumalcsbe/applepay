@@ -47,7 +47,7 @@ export const createStore = (initialize) => {
 export const useStore = createStore((set) => ({
     meta: {},
     cart: {
-        id: 'NB5QRK3FJ4ANE',
+        id: 'WS5XPBM5KBDVU', //'NB5QRK3FJ4ANE',
         item_name: 'T-Shirt',
         price: 20,
         currency_code: 'EUR',
@@ -57,6 +57,9 @@ export const useStore = createStore((set) => ({
         shipping: 10
     },
     sdk: {
+        //clientId: 'B_AiC0FeU8v-5PeEQ7pQATJSvG4ppKpe8PX--Zmbn8UZUBpSuHvUpu11s9fo51UE5C7ewKg5KxjZjSjkuQ', 
+        //merchantId: 'M7JSF3RMJ5DTW',
+        //sdkBaseUrl: 'https://www.msmaster.qa.paypal.com/sdk/js',
         clientId: 'AbZtjYpuBgn7oZFlkmvs6t4uGxIpfpCpG8PVUNJlZ2bFuUx-Nc4Kgj-UkYaujZbojuXGZcMyHQh3nDwT', 
         merchantId: 'A2AL8PEZEQKX8',
         buyerCountry: 'DE',

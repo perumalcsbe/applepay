@@ -4,17 +4,20 @@ import { formatCurrency } from "./utils";
 
 export function CartSummary() {
     const cart = useStore(store => store.cart);
-    const total = (cart.price * cart.quantity) + cart.shipping + cart.tax;
+
     const tax = (cart.tax_rate === 0 || false
         ? 0
         : cart.price * (parseFloat(cart.tax_rate) / 100)) * cart.quantity;
-    
+    const total = (cart.price * cart.quantity) + cart.shipping + tax;
+
     return (
         <div className=" bg-light p-5 flex flex-column" style={{ minHeight: "100%" }}>
             <h6>Test Store</h6>
             <h6 className="text-muted">Purchase details</h6>
             <p>{cart.item_name}</p>
             <dl className="row">
+                <dt className="col-sm-9">Price</dt>
+                <dd className="col-sm-3">{cart.price}</dd>
                 <dt className="col-sm-9">Quantity</dt>
                 <dd className="col-sm-3">{cart.quantity}</dd>
                 <dt className="col-sm-9">Subtotal</dt>

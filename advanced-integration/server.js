@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import bodyParser from "body-parser";
 import * as paypal from "./paypal-api.js";
 const { PORT = 8888 } = process.env;
 
@@ -7,6 +8,8 @@ const app = express();
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(express.static("dist"));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.json());
 
 // render checkout page with client id & unique client token
 app.get("/", async (req, res) => {
@@ -22,7 +25,28 @@ app.get("/", async (req, res) => {
 // create order
 app.post("/api/orders", async (req, res) => {
   try {
-    const order = await paypal.createOrder();
+    const cart = req.body || {
+      id: 'WS5XPBM5KBDVU',
+      item_name: 'T-Shirt',
+      price: 20,
+      currency_code: 'USD',
+      quantity: 2,
+      tax_rate: 9,
+      shipping: 10
+    };
+
+    const order = await paypal.createOrder(cart);
+    res.json(order);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Get order
+app.post("/api/orders/:orderID", async (req, res) => {
+  const { orderID } = req.params;
+  try {
+    const order = await paypal.getOrder(orderID);
     res.json(order);
   } catch (err) {
     res.status(500).send(err.message);
