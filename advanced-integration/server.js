@@ -21,6 +21,20 @@ app.get("/", async (req, res) => {
     res.status(500).send(err.message);
   }
 });
+app.get("/product", async (req, res) => {
+  try {
+    res.render("product");
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+app.get("/details/:id", async (req, res) => {
+  try {
+    res.render("details");
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
 // create order
 app.post("/api/orders", async (req, res) => {

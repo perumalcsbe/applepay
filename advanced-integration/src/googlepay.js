@@ -319,6 +319,120 @@ export function GooglePayButtonContainer() {
     }
   }, [selectedFundingSource]);
 
+  async function processPaymentNcps(paymentData) {
+    const resultElement = document.getElementById("result");
+    const modal = document.getElementById("resultModal");
+    resultElement.innerHTML = ""
+    try {
+      const { access_token } = await fetch(`https://api-m.sandbox.paypal.com/v1/oauth2/token`, {
+        method: "post",
+        body: "grant_type=client_credentials",
+        headers: {
+          Authorization: `Basic QWJadGpZcHVCZ243b1pGbGttdnM2dDR1R3hJcGZwQ3BHOFBWVU5KbFoyYkZ1VXgtTmM0S2dqLVVrWWF1alpib2p1WEdaY015SFFoM25Ed1Q=`,
+
+          //Authorization: 'Basic Ql9BaUMwRmVVOHYtNVBlRVE3cFFBVEpTdkc0cHBLcGU4UFgtLVptYm44VVpVQnBTdUh2VXB1MTFzOWZvNTFVRTVDN2V3S2c1S3hqWmpTamt1UQ=='
+        },
+      }).then((res) => res.json());
+      //WS5XPBM5KBDVU
+      const { context_id } = await fetch(`https://api-m.sandbox.paypal.com/v1/checkout/links/NB5QRK3FJ4ANE/create-context`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "authorization": `Bearer ${access_token}`
+        },
+        body: JSON.stringify({
+          "entry_point": "SDK",
+          "quantity": "2"
+        }),
+      }).then((res) => res.json());
+
+      console.log(" ===== Order Created ===== ", context_id);
+      /** Approve Payment */
+
+      const { status } = await paypal.Googlepay().confirmOrder({
+        orderId: context_id,
+        paymentMethodData: paymentData.paymentMethodData
+      });
+
+      if (status === 'PAYER_ACTION_REQUIRED') {
+        console.log(" ===== Confirm Payment Completed Payer Action Required ===== ")
+        paypal.Googlepay().initiatePayerAction({ orderId: context_id }).then(async () => {
+
+          /**
+           *  GET Order 
+           */
+          const orderResponse = await fetch(`/api/orders/${context_id}`, {
+            method: "GET"
+          }).then(res => res.json())
+
+          console.log(" ===== 3DS Contingency Result Fetched ===== ");
+          console.log(orderResponse?.payment_source?.google_pay?.card?.authentication_result)
+          /*
+           * CAPTURE THE ORDER
+           */
+          console.log(" ===== Payer Action Completed ===== ")
+
+          modal.style.display = "block";
+          resultElement.classList.add("spinner");
+          const captureResponse = await fetch(`https://api-m.sandbox.paypal.com/v1/checkout/links/NB5QRK3FJ4ANE/pay`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "authorization": `Bearer ${access_token}`
+            },
+            body: JSON.stringify({
+              "entry_point": "SDK",
+              "context_id": context_id
+            }),
+          }).then(res => res.json())
+
+          console.log(" ===== Order Capture Completed ===== ")
+          resultElement.classList.remove("spinner");
+          resultElement.innerHTML = prettyPrintJson.toHtml(captureResponse, {
+            indent: 2
+          });
+
+
+        })
+      } else {
+        /*
+         * CAPTURE THE ORDER
+         */
+
+        const response = await fetch(`https://api-m.sandbox.paypal.com/v1/checkout/links/NB5QRK3FJ4ANE/pay`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "authorization": `Bearer ${access_token}`
+          },
+          body: JSON.stringify({
+            "entry_point": "SDK",
+            "context_id": context_id
+          }),
+        }).then(res => res.json())
+
+        console.log(" ===== Order Capture Completed ===== ")
+        modal.style.display = "block";
+        resultElement.innerHTML = prettyPrintJson.toHtml(response, {
+          indent: 2
+        });
+
+      }
+
+      return { transactionState: 'SUCCESS' }
+
+
+    } catch (err) {
+      console.log("=====Google Pay: processPayment error", err);
+      return {
+        transactionState: 'ERROR',
+        error: {
+          message: err.message
+        }
+      }
+    }
+  }
+
   async function processPayment(paymentData) {
     const resultElement = document.getElementById("result");
     const modal = document.getElementById("resultModal");
@@ -412,7 +526,7 @@ export function GooglePayButtonContainer() {
   }
   function onPaymentAuthorized(paymentData) {
     return new Promise(function (resolve, reject) {
-      processPayment(paymentData)
+      processPaymentNcps(paymentData)
         .then(function () {
           resolve({ transactionState: 'SUCCESS' });
         })
